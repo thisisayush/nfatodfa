@@ -86,7 +86,7 @@
                 <tbody id="dfa-table-data">
                 </tbody>
             </table>
-            <div class="container-fluid">
+            <div class="container-fluid flowchart-container">
                 <h2 class="text-center">DFA Diagram</h2>
                 <div id="flowchart"></div>
             </div>
@@ -101,7 +101,6 @@
     <script src="https://unpkg.com/mermaid@7.1.0/dist/mermaid.min.js"></script>
     <script>
         $(document).ready(function (e) {
-            var flowchart = $("#flowchart");
             var nfa_template =
                 '<tr><td contenteditable="true"></td><td contenteditable="true"></td><td contenteditable="true"></td></tr>';
             var stack = {};
@@ -125,7 +124,11 @@
                 shapes = [];
                 $(".dfa-container").fadeOut();
                 $("#dfa-table-data").empty();
-                flowchart.empty();
+                if($("#flowchart") != undefined)
+                    $("#flowchart").remove();
+                
+                $(".flowchart-container").append('<div id="flowchart"></div>');
+                var flowchart = $("#flowchart");
                 flowchart.html("graph LR\n");
 
                 var start = data.first();
@@ -177,7 +180,10 @@
                 }
                 $(".dfa-container").fadeIn();
                 // Draw Flowchart
-                mermaid.init(undefined, $("#flowchart"));
+                function insertSVG(svgGraph){
+                    flowchart.html(svgGraph);
+                }
+                var t = mermaid.init(undefined, flowchart);
             });
 
             function validateNFA() {
