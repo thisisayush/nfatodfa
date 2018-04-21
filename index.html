@@ -36,6 +36,7 @@
     <div class="container text-center mt-5">
         <div id="alertBox" class="alert alert-danger w-100"></div>
         <h2 class="text-center">NFA Table</h2>
+        <h6 class="text-center text-secondary">Use <strong>NULL</strong> for null transitions</h6>
         <hr />
         <table id="nfa-table" class="table table-striped">
             <thead class="thead-dark">
@@ -68,12 +69,19 @@
                 </tr>
             </tbody>
         </table>
+        <div class="form-group text-left">
+            <label for="final-states"><strong>Final States</strong></label>
+            <input class="form-control" id="final-states" aria-describedby="final-states-help" placeholder="e.g. q0,q1,q2">
+            <small id="final-states-help" class="form-text text-muted">Enter list of final states seperated by commas</small>
+        </div>
         <div class="btn-group mx-auto" role="group">
             <button class="add-state-btn btn btn-secondary">Add State</button>
             <button id="process" class="btn btn-primary">Convert</button>
+            <button class="remove-state-btn btn btn-secondary">Remove State</button>
         </div>
         <div class="container-fluid nfa-flowchart-container">
             <h2 class="text-center">NFA Diagram</h2>
+            <h6 class="text-center text-secondary">Final States are shown in diamond boxes</h6>
         </div>
         <div class="dfa-container">
             <h2 class="text-center mt-3">DFA Table (Auto-Generated)</h2>
@@ -91,6 +99,7 @@
             </table>
             <div class="container-fluid flowchart-container">
                 <h2 class="text-center">DFA Diagram</h2>
+                <h6 class="text-center text-secondary">Final States are shown in diamond boxes</h6>
             </div>
         </div>
     </div>
@@ -110,6 +119,9 @@
             $(".add-state-btn").click(function (e) {
                 $("#nfa-table-data").append(nfa_template);
             });
+            $(".remove-state-btn").click(function(e){
+                $("#nfa-table-data tr:last").remove();
+            });
             $("#alertBox").fadeOut();
             $(".dfa-container").fadeOut();
             // Bind to Click on Process Btn
@@ -124,9 +136,15 @@
                 // re-initialize the variable and containers
                 stack = {};
                 shapes = [];
+
+                // Draw NFA Diagram
                 drawNFA();
+
+                // Hide and Reinitialize DFA Table Container
                 $(".dfa-container").fadeOut();
                 $("#dfa-table-data").empty();
+
+                // Reinitialize DFA Flowchart
                 if($("#flowchart") != undefined)
                     $("#flowchart").remove();
                 
@@ -134,12 +152,12 @@
                 var flowchart = $("#flowchart");
                 flowchart.html("graph LR\n");
 
+                // Process NFA to DFA
                 var start = data.first();
                 var i = 0;
 
                 while (1) {
                     var state, transitB, transitB;
-
                     if (i == 0) {
                         // First State
                         state = data.first().find("td:eq(0)").html();
@@ -156,10 +174,9 @@
                         setProcessed(state);
                     }
                     // Add Flowchart Syntax
-                    flowchart.append(state + "((" + state + "))--> |A| " + transitA + "((" + transitA +
-                        "))\n");
-                    flowchart.append(state + "((" + state + "))--> |B| " + transitB + "((" + transitB +
-                        "))\n");
+                    flowchart.append(getFlowchartText(state, transitA, "A", isFinalState(state), isFinalState(transitA)));
+                    flowchart.append(getFlowchartText(state, transitB, "B", isFinalState(state), isFinalState(transitB)));
+                    
                     // Add the conversion to table
                     $("#dfa-table-data").append(getDFATemplate(state, transitA, transitB));
 
@@ -181,37 +198,76 @@
                     }
                     i++;
                 }
+                // Bring Back the DFA container
                 $(".dfa-container").fadeIn();
-                // Draw Flowchart
+                // Draw DFA Flowchart
                 function insertSVG(svgGraph){
                     flowchart.html(svgGraph);
                 }
                 var t = mermaid.init(undefined, flowchart);
             });
             
+            function getFlowchartText(state, transition, symbol, isFinalState, isFinalStateTransition){
+                // Create Diamond or Regular Boxes Based on isFinalState and isFinalStateTransition Flag
+                var str = state;
+    
+                if(isFinalState)
+                    str += "{" + state + "}";
+                else
+                    str += "((" + state + "))";
+                
+                str += "--> |"+symbol+"| " + transition;
+                
+                if(isFinalStateTransition)
+                    str += "{" + transition + "}";
+                else
+                    str += "((" + transition + "))";
+                
+                str +="\n";
+                return str;
+            }
+
+            function isFinalState(state){
+                var finalStates = $("#final-states").val().split(",");
+                var states = state.split(",");
+    
+                for(var x in states){
+                    for(var y in finalStates){
+                        if(states[x] == finalStates[y])
+                            return true;
+                    }
+                }
+                return false;
+            }
+
             function drawNFA(){
+                
+                var data = $("#nfa-table-data");
+                
+                // Reinitialize the NFA Flowchart Container
                 if($("#nfa-flowchart")!=undefined)
                     $("#nfa-flowchart").remove();
                 
                 $(".nfa-flowchart-container").append('<div id="nfa-flowchart"></div>');
                 
                 var flowchart = $("#nfa-flowchart");
-                var data = $("#nfa-table-data");
-                
                 flowchart.html("graph LR\n");
+                
+                // Start Extracting Data for Graph
                 data.find("tr").each(function(i,v){
                     var state = $(v).find("td:eq(0)").html();
                     var transitA = $(v).find("td:eq(1)").html();
-                    transitA = transitA.split(",");
                     var transitB = $(v).find("td:eq(2)").html();
+                    
+                    transitA = transitA.split(",");
                     transitB = transitB.split(",");
+                    
                     for(var i=0; i<transitA.length; i++)
-                        flowchart.append(state + "((" + state + "))--> |A| " + transitA[i] + "((" + transitA[i] +
-                        "))\n");
+                        flowchart.append(getFlowchartText(state, transitA[i], "A", isFinalState(state), isFinalState(transitA[i])));
                     for(var i=0; i<transitB.length; i++)
-                        flowchart.append(state + "((" + state + "))--> |B| " + transitB[i] + "((" + transitB[i] +
-                        "))\n");
+                        flowchart.append(getFlowchartText(state, transitB[i], "B", isFinalState(state), isFinalState(transitB[i])));
                 });
+
                 // Draw Flowchart
                 function insertSVG(svgGraph){
                     flowchart.html(svgGraph);
@@ -261,7 +317,7 @@
                         return false;
                     }
                 });
-
+                states.push("NULL");
                 // Continue if all ok 
                 if (toRet.flag == 1) {
                     // Check Transition Columns
@@ -301,6 +357,31 @@
                             return false;
                         }
                     });
+                }
+                if(toRet.flag == 1){
+                    // Check for Final States
+                    
+                    $("#final-states").val($("#final-states").val().replace(" ", ""));
+                    var finalStates = $("#final-states").val().split(",");
+                    if(finalStates.length == 1 && finalStates[0] == ""){
+                        toRet.msg = "No Final State Found!";
+                        toRet.flag = 0;
+                    }else{
+                        for(x in finalStates){
+                            var flag = 0;
+                            for(y in states){
+                                if(finalStates[x] == states[y]){
+                                    flag = 1;
+                                    break;
+                                }
+                            }
+                            if(!flag){
+                                toRet.msg = "Unknown Final State Detected!";
+                                toRet.flag = 0;
+                                break;
+                            }
+                        }
+                    }
                 }
                 if (toRet.flag == 0) {
                     $("#alertBox").fadeOut().html(toRet.msg).fadeIn();
@@ -382,6 +463,8 @@
                                 temp = data_table.find("tr:eq(" + i + ") td:eq(2)").html().split(",");
                             }
                             for (x in temp) {
+                                if(temp[x] == "NULL")
+                                    continue;
                                 var flag = 0;
                                 for (y in app_states) {
                                     if (temp[x] == app_states[y]) {
@@ -397,6 +480,10 @@
                         }
                     }
                 });
+                if(app_states.length == 0){
+                    app_states.push("NULL");
+                }
+                app_states.sort();
                 return app_states.toString();
             }
         });
