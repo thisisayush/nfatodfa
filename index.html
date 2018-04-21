@@ -72,6 +72,9 @@
             <button class="add-state-btn btn btn-secondary">Add State</button>
             <button id="process" class="btn btn-primary">Convert</button>
         </div>
+        <div class="container-fluid nfa-flowchart-container">
+            <h2 class="text-center">NFA Diagram</h2>
+        </div>
         <div class="dfa-container">
             <h2 class="text-center mt-3">DFA Table (Auto-Generated)</h2>
             <hr />
@@ -88,7 +91,6 @@
             </table>
             <div class="container-fluid flowchart-container">
                 <h2 class="text-center">DFA Diagram</h2>
-                <div id="flowchart"></div>
             </div>
         </div>
     </div>
@@ -122,6 +124,7 @@
                 // re-initialize the variable and containers
                 stack = {};
                 shapes = [];
+                drawNFA();
                 $(".dfa-container").fadeOut();
                 $("#dfa-table-data").empty();
                 if($("#flowchart") != undefined)
@@ -185,6 +188,36 @@
                 }
                 var t = mermaid.init(undefined, flowchart);
             });
+            
+            function drawNFA(){
+                if($("#nfa-flowchart")!=undefined)
+                    $("#nfa-flowchart").remove();
+                
+                $(".nfa-flowchart-container").append('<div id="nfa-flowchart"></div>');
+                
+                var flowchart = $("#nfa-flowchart");
+                var data = $("#nfa-table-data");
+                
+                flowchart.html("graph LR\n");
+                data.find("tr").each(function(i,v){
+                    var state = $(v).find("td:eq(0)").html();
+                    var transitA = $(v).find("td:eq(1)").html();
+                    transitA = transitA.split(",");
+                    var transitB = $(v).find("td:eq(2)").html();
+                    transitB = transitB.split(",");
+                    for(var i=0; i<transitA.length; i++)
+                        flowchart.append(state + "((" + state + "))--> |A| " + transitA[i] + "((" + transitA[i] +
+                        "))\n");
+                    for(var i=0; i<transitB.length; i++)
+                        flowchart.append(state + "((" + state + "))--> |B| " + transitB[i] + "((" + transitB[i] +
+                        "))\n");
+                });
+                // Draw Flowchart
+                function insertSVG(svgGraph){
+                    flowchart.html(svgGraph);
+                }
+                var t = mermaid.init(undefined, flowchart);
+            }
 
             function validateNFA() {
                 /** Validates the data in NFA Table 
